@@ -64,10 +64,10 @@ namespace ScheduledRunner
             // 
             // serviceInstaller
             // 
-            this.serviceInstaller.DisplayName = "ExecuteFileScheduler";
-            this.serviceInstaller.ServiceName = "ExecuteFileScheduler";
-            this.serviceInstaller.Description = "ExecuteFileScheduler";
-            
+            this.serviceInstaller.DisplayName = mySettings["ServiceName"].Value;
+            this.serviceInstaller.ServiceName = mySettings["ServiceName"].Value;
+            this.serviceInstaller.Description = mySettings["ServiceDescription"].Value;
+
             // 
             // ProjectInstaller
             // 

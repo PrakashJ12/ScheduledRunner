@@ -22,7 +22,7 @@ namespace ScheduledRunner
         }
         protected override void OnStart(string[] args)
         {
-            WriteToFile("Service is started at " + DateTime.Now);
+            WriteToLogFile("Service is started at " + DateTime.Now);
             timer.Elapsed += new ElapsedEventHandler(OnElapsedTime);
             int schedulerInterval = int.Parse(ConfigurationManager.AppSettings.Get("SchedulerIntervalMinutes")); //number in minutes  
             timer.Interval = schedulerInterval * 60 * 1000; //number in milisecinds  
@@ -30,13 +30,28 @@ namespace ScheduledRunner
         }
         protected override void OnStop()
         {
-            WriteToFile("Service is stopped at " + DateTime.Now);
+            WriteToLogFile("Service is stopped at " + DateTime.Now);
         }
         private void OnElapsedTime(object source, ElapsedEventArgs e)
         {
-            WriteToFile("Service is recall at " + DateTime.Now);
+            WriteToLogFile("Service is recall at " + DateTime.Now);
+            try
+            {
+                Process myProcess = new Process();
+                myProcess.StartInfo.UseShellExecute = true;
+                myProcess.StartInfo.FileName = ConfigurationManager.AppSettings.Get("ExecutableLocation");
+                myProcess.StartInfo.Arguments = ConfigurationManager.AppSettings.Get("Parameters");
+                myProcess.Start();
+            }catch(Exception ex)
+            {
+                WriteToLogFile(ex.ToString());
+                WriteToLogFile(ConfigurationManager.AppSettings.Get("ExecutableLocation"));
+            }
+            
+
+            WriteToLogFile("Service executed at " + DateTime.Now);
         }
-        public void WriteToFile(string Message)
+        public void WriteToLogFile(string Message)
         {
             string path = AppDomain.CurrentDomain.BaseDirectory + "\\Logs";
             if (!Directory.Exists(path))
