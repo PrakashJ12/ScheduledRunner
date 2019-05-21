@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Configuration;
+using System.Globalization;
 
 namespace ScheduledRunner
 {
@@ -17,35 +18,40 @@ namespace ScheduledRunner
     {
         const int ConsoleReadWaitTime = 60; //In Seconds
         Timer _timer;
-        DateTime _scheduleTime;
         int dailyRunTime_HH;
         int dailyRunTime_MM;
+        string logFilePath;
 
         public Service1()
         {
             InitializeComponent();
-
+            logFilePath = AppDomain.CurrentDomain.BaseDirectory + "\\Logs\\ServiceLog_" + DateTime.Now.Date.ToString("yyyy_MM_dd", CultureInfo.InvariantCulture) + ".txt";
             _timer = new System.Timers.Timer();
             dailyRunTime_HH = int.Parse(ConfigurationManager.AppSettings.Get("SchedulerTimeHour"));
             dailyRunTime_MM = int.Parse(ConfigurationManager.AppSettings.Get("SchedulerTimeMinute"));
-            _scheduleTime = DateTime.Today.AddDays(0).AddHours(dailyRunTime_HH).AddMinutes(dailyRunTime_MM); // Schedule to run once a day at 7:00 a.m.
-
         }
         protected override void OnStart(string[] args)
         {
             WriteToLogFile("Service is started at " + DateTime.Now);
             
-            double tillNextInterval = _scheduleTime.Subtract(DateTime.Now).TotalSeconds * 1000;
+            
+            _timer.Interval = getInterval();
+            _timer.Elapsed += new ElapsedEventHandler(OnElapsedTime);
+            _timer.Enabled = true;
+
+            WriteToLogFile("First Run Scheduled in " + (int)((((_timer.Interval) /1000))/60) + " Minutes");
+        }
+
+        private double getInterval()
+        {
+            double tillNextInterval = DateTime.Today.AddDays(0).AddHours(dailyRunTime_HH).AddMinutes(dailyRunTime_MM).Subtract(DateTime.Now).TotalSeconds * 1000;
             if (tillNextInterval < 0)
             {
                 tillNextInterval += new TimeSpan(24, 0, 0).TotalSeconds * 1000;
             }
-            _timer.Interval = tillNextInterval;
-            _timer.Elapsed += new ElapsedEventHandler(OnElapsedTime);
-            _timer.Enabled = true;
-
-            WriteToLogFile("First Run Scheduled in " + (((tillNextInterval)/1000))/60 + " Minutes");
+            return tillNextInterval;
         }
+
         protected override void OnStop()
         {
             WriteToLogFile("Service is stopped at " + DateTime.Now);
@@ -64,8 +70,8 @@ namespace ScheduledRunner
                 myProcess.StartInfo.Arguments = ConfigurationManager.AppSettings.Get("Parameters");
                 myProcess.Start();
                 myProcess.BeginOutputReadLine();
-
-                WriteToLogFile("Scheduled run executed successfully at " + DateTime.Now +". Initiating "+ ConsoleReadWaitTime + " second delay.");
+                
+                WriteToLogFile("Scheduled run executed successfully at " + DateTime.Now);
             }
             catch(Exception ex)
             {
@@ -74,16 +80,9 @@ namespace ScheduledRunner
                 WriteToLogFile(ConfigurationManager.AppSettings.Get("ExecutableLocation"));
             }
 
-            if (_timer.Interval != 24 * 60 * 60 * 1000)
-            {
-                _timer.Interval = 24 * 60 * 60 * 1000;
-            }
-
-
-
+            _timer.Interval = getInterval();
+            
             WriteToLogFile("Next Run Scheduled in " + (int)((((_timer.Interval) / 1000)) / 60) + " Minutes");
-
-
         }
         public void WriteToLogFile(string Message)
         {
@@ -92,21 +91,21 @@ namespace ScheduledRunner
             {
                 Directory.CreateDirectory(path);
             }
-            string filepath = AppDomain.CurrentDomain.BaseDirectory + "\\Logs\\ServiceLog_" + DateTime.Now.Date.ToShortDateString().Replace('/', '_') + ".txt";
+            string filepath = logFilePath;
             if (!File.Exists(filepath))
             {
                 // Create a file to write to.   
                 using (StreamWriter sw = File.CreateText(filepath))
                 {
-                    Console.WriteLine(System.Text.Encoding.UTF8.GetString(System.Convert.FromBase64String("LS0tLS0tLURhaWx5IFNjaGVkdWxlZCBSdW5uZXIgU2VydmljZSBmb3IgV2luZG93cyBNYWNoaW5lcyguTkVUIHY0KyktLS0tLS0tDQoNCkRldmVsb3BlZCBCeSBQcmFrYXNoIEpvc2VwaCA8UHJha2FzaC5Kb3NlcGggYXQgZ2RzLmV5LmNvbT4NClNvdXJjZSBSZXBvOiBodHRwczovL2dpdGh1Yi5jb20vUHJha2FzaEoxMi9TY2hlZHVsZWRSdW5uZXINCg0K")));
-                    sw.WriteLine(DateTime.Now.ToString() + ": " + Message);
+                    sw.WriteLine(Encoding.UTF8.GetString(Convert.FromBase64String("LS0tLS0tLURhaWx5IFNjaGVkdWxlZCBSdW5uZXIgU2VydmljZSBmb3IgV2luZG93cyBNYWNoaW5lcyguTkVUIHY0KyktLS0tLS0tDQoNCkRldmVsb3BlZCBCeSBQcmFrYXNoIEpvc2VwaCA8UHJha2FzaC5Kb3NlcGggYXQgZ2RzLmV5LmNvbT4gb2YgRXZlbnQgQ29uZmlndXJhdGlvbiAtIEFwcGxpY2F0aW9uIEluc3RydW1lbnRhdGlvbiBUZWFtDQpTb3VyY2UgUmVwbzogaHR0cHM6Ly9naXRodWIuY29tL1ByYWthc2hKMTIvU2NoZWR1bGVkUnVubmVyDQoNCg==")));
+                    sw.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture) + ": " + Message);
                 }
             }
             else
             {
                 using (StreamWriter sw = File.AppendText(filepath))
                 {
-                    sw.WriteLine(DateTime.Now.ToString() + ": " + Message);
+                    sw.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture) + ": " + Message);
                 }
             }
         }
